@@ -30,14 +30,13 @@ import com.google.android.gms.ads.nativead.NativeAdView
 class MainActivity : ComponentActivity() {
 
     private lateinit var adContainer3: FrameLayout
-    private lateinit var adContainer5: FrameLayout
+    private lateinit var adContainer6: FrameLayout
     private lateinit var loadAdButton: Button
     private var nativeAd: NativeAd? = null
     private var isAdLoading = false
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
-    private lateinit var shimmerLayout_1: ShimmerFrameLayout
-    private lateinit var shimmerLayout_2: ShimmerFrameLayout
+    private lateinit var shimmerLayout: ShimmerFrameLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,10 +46,9 @@ class MainActivity : ComponentActivity() {
         MobileAds.initialize(this)
 
         adContainer3 = findViewById(R.id.sm_native_3)
-        adContainer5 = findViewById(R.id.sm_native_5)
+        adContainer6 = findViewById(R.id.sm_native_6)
         loadAdButton = findViewById(R.id.load_ad_button)
-        shimmerLayout_1 = findViewById(R.id.shimmer_layout_1)
-        shimmerLayout_2 = findViewById(R.id.shimmer_layout_2)
+        shimmerLayout = findViewById(R.id.shimmer_layout)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         // Register network callback
@@ -125,8 +123,8 @@ class MainActivity : ComponentActivity() {
         isAdLoading = true
         loadAdButton.isEnabled = false
         // Start shimmer effect
-        shimmerLayout_1.isVisible = true
-        shimmerLayout_1.startShimmer()
+        shimmerLayout.isVisible = true
+        shimmerLayout.startShimmer()
         Toast.makeText(this, "Loading ad...", Toast.LENGTH_SHORT).show()
 
         val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110")
@@ -149,8 +147,8 @@ class MainActivity : ComponentActivity() {
                 isAdLoading = false
                 loadAdButton.isEnabled = true
                 // Stop and hide shimmer effect
-                shimmerLayout_1.stopShimmer()
-                shimmerLayout_1.isGone = true
+                shimmerLayout.stopShimmer()
+                shimmerLayout.isGone = true
                 Toast.makeText(this, "Ad loaded successfully", Toast.LENGTH_SHORT).show()
             }.withAdListener(object : AdListener() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
@@ -158,8 +156,8 @@ class MainActivity : ComponentActivity() {
                     loadAdButton.isEnabled = true
                     dismissAd()
                     // Stop and hide shimmer effect on ad failure
-                    shimmerLayout_1.stopShimmer()
-                    shimmerLayout_1.isGone = true
+                    shimmerLayout.stopShimmer()
+                    shimmerLayout.isGone = true
                     Toast.makeText(
                         this@MainActivity, "Ad failed to load: ${error.message}", Toast.LENGTH_LONG
                     ).show()
@@ -179,8 +177,8 @@ class MainActivity : ComponentActivity() {
         isAdLoading = true
         loadAdButton.isEnabled = false
         // Start shimmer effect
-        shimmerLayout_2.isVisible = true
-        shimmerLayout_2.startShimmer()
+        shimmerLayout.isVisible = true
+        shimmerLayout.startShimmer()
         Toast.makeText(this, "Loading ad...", Toast.LENGTH_SHORT).show()
 
         val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110")
@@ -194,17 +192,17 @@ class MainActivity : ComponentActivity() {
                 nativeAd = ad
 
                 val adView = LayoutInflater.from(this)
-                    .inflate(R.layout.sm_native_5, adContainer5, false) as NativeAdView
+                    .inflate(R.layout.sm_native_v6, adContainer3, false) as NativeAdView
 
                 populateNativeAdView(ad, adView)
-                adContainer3.removeAllViews()
-                adContainer3.addView(adView)
+                adContainer6.removeAllViews()
+                adContainer6.addView(adView)
 
                 isAdLoading = false
                 loadAdButton.isEnabled = true
                 // Stop and hide shimmer effect
-                shimmerLayout_2.stopShimmer()
-                shimmerLayout_2.isGone = true
+                shimmerLayout.stopShimmer()
+                shimmerLayout.isGone = true
                 Toast.makeText(this, "Ad loaded successfully", Toast.LENGTH_SHORT).show()
             }.withAdListener(object : AdListener() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
@@ -212,8 +210,8 @@ class MainActivity : ComponentActivity() {
                     loadAdButton.isEnabled = true
                     dismissAd()
                     // Stop and hide shimmer effect on ad failure
-                    shimmerLayout_2.stopShimmer()
-                    shimmerLayout_2.isGone = true
+                    shimmerLayout.stopShimmer()
+                    shimmerLayout.isGone = true
                     Toast.makeText(
                         this@MainActivity, "Ad failed to load: ${error.message}", Toast.LENGTH_LONG
                     ).show()
@@ -223,16 +221,15 @@ class MainActivity : ComponentActivity() {
         adLoader.loadAd(AdRequest.Builder().build())
     }
 
+
     private fun dismissAd() {
         nativeAd?.destroy()
         nativeAd = null
         adContainer3.removeAllViews()
+        adContainer6.removeAllViews()
         // Stop and hide shimmer effect when dismissing ad
-        shimmerLayout_1.stopShimmer()
-        shimmerLayout_1.isGone = true
-        // Stop and hide shimmer effect when dismissing ad
-        shimmerLayout_2.stopShimmer()
-        shimmerLayout_2.isGone = true
+        shimmerLayout.stopShimmer()
+        shimmerLayout.isGone = true
     }
 
     private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
@@ -267,7 +264,7 @@ class MainActivity : ComponentActivity() {
 
         nativeAd.starRating?.let {
             (adView.starRatingView as? RatingBar)?.apply {
-                visibility = RatingBar.VISIBLE
+                visibility = RatingBar.GONE
                 rating = it.toFloat()
             }
         } ?: run {
@@ -280,8 +277,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         nativeAd?.destroy()
         connectivityManager.unregisterNetworkCallback(networkCallback)
-        shimmerLayout_1.stopShimmer()
-        shimmerLayout_2.stopShimmer()
+        shimmerLayout.stopShimmer()
         super.onDestroy()
     }
 }
