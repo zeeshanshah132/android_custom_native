@@ -6,7 +6,10 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -15,8 +18,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
-import androidx.core.view.isGone
-import androidx.core.view.isVisible
 import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
@@ -29,14 +30,28 @@ import com.google.android.gms.ads.nativead.NativeAdView
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var adContainer3: FrameLayout
     private lateinit var adContainer6: FrameLayout
+    private lateinit var shimmerLayout: ShimmerFrameLayout
     private lateinit var loadAdButton: Button
     private var nativeAd: NativeAd? = null
     private var isAdLoading = false
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
-    private lateinit var shimmerLayout: ShimmerFrameLayout
+    private val adRefreshHandler = Handler(Looper.getMainLooper())
+    private var isActivityPaused = false
+    private val adRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (!isActivityPaused && isNetworkAvailable() && !isAdLoading) {
+                loadNativeAd3()
+            }
+            // Schedule the next refresh
+            adRefreshHandler.postDelayed(this, AD_REFRESH_INTERVAL)
+        }
+    }
+
+    companion object {
+        private const val AD_REFRESH_INTERVAL = 30_000L // 30 seconds in milliseconds
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,19 +60,24 @@ class MainActivity : ComponentActivity() {
 
         MobileAds.initialize(this)
 
-        adContainer3 = findViewById(R.id.sm_native_3)
-        adContainer6 = findViewById(R.id.sm_native_6)
-        loadAdButton = findViewById(R.id.load_ad_button)
+        adContainer6 = findViewById(R.id.ad_container_6)
         shimmerLayout = findViewById(R.id.shimmer_layout)
+        loadAdButton = findViewById(R.id.load_ad_button)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        // Initialize shimmer visibility based on internet
+        updateShimmerVisibility()
 
         // Register network callback
         setupNetworkCallback()
 
         loadAdButton.setOnClickListener {
             if (isNetworkAvailable()) {
-//                loadNativeAd3()
-                loadNativeAd5()
+                if (nativeAd == null) {
+                    loadNativeAd3()
+                } else {
+                    Toast.makeText(this, "Ad already loaded", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(
                     this,
@@ -68,10 +88,12 @@ class MainActivity : ComponentActivity() {
         }
 
         // Initial check for internet to load ad
-        if (isNetworkAvailable()) {
-//            loadNativeAd3()
-            loadNativeAd5()
+        if (isNetworkAvailable() && nativeAd == null) {
+            loadNativeAd3()
         }
+
+        // Start the ad refresh loop
+        startAdRefresh()
     }
 
     private fun setupNetworkCallback() {
@@ -79,8 +101,8 @@ class MainActivity : ComponentActivity() {
             override fun onAvailable(network: Network) {
                 runOnUiThread {
                     if (!isAdLoading && nativeAd == null) {
-//                        loadNativeAd3()
-                        loadNativeAd5()
+                        showShimmer()
+                        loadNativeAd3()
                     }
                 }
             }
@@ -88,6 +110,7 @@ class MainActivity : ComponentActivity() {
             override fun onLost(network: Network) {
                 runOnUiThread {
                     dismissAd()
+                    hideShimmer()
                     Toast.makeText(
                         this@MainActivity,
                         "Internet connection lost. Ad dismissed.",
@@ -100,7 +123,6 @@ class MainActivity : ComponentActivity() {
         val networkRequest =
             NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
-
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
     }
 
@@ -113,6 +135,40 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun showShimmer() {
+        if (isNetworkAvailable()) {
+            shimmerLayout.visibility = View.VISIBLE
+            shimmerLayout.startShimmer()
+            adContainer6.visibility = View.GONE
+        }
+    }
+
+    private fun hideShimmer() {
+        if (shimmerLayout.visibility == View.VISIBLE) {
+            shimmerLayout.stopShimmer()
+            shimmerLayout.visibility = View.GONE
+        }
+        adContainer6.visibility = if (nativeAd != null) View.VISIBLE else View.GONE
+    }
+
+    private fun updateShimmerVisibility() {
+        if (isNetworkAvailable() && nativeAd == null && !isAdLoading) {
+            showShimmer()
+        } else {
+            hideShimmer()
+        }
+    }
+
+    private fun startAdRefresh() {
+        // Remove any existing callbacks to prevent duplicates
+        adRefreshHandler.removeCallbacks(adRefreshRunnable)
+        // Schedule the first refresh
+        adRefreshHandler.postDelayed(adRefreshRunnable, AD_REFRESH_INTERVAL)
+    }
+
+    private fun stopAdRefresh() {
+        adRefreshHandler.removeCallbacks(adRefreshRunnable)
+    }
 
     private fun loadNativeAd3() {
         if (isAdLoading) {
@@ -122,9 +178,7 @@ class MainActivity : ComponentActivity() {
 
         isAdLoading = true
         loadAdButton.isEnabled = false
-        // Start shimmer effect
-        shimmerLayout.isVisible = true
-        shimmerLayout.startShimmer()
+        showShimmer()
         Toast.makeText(this, "Loading ad...", Toast.LENGTH_SHORT).show()
 
         val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110")
@@ -134,84 +188,27 @@ class MainActivity : ComponentActivity() {
                     return@forNativeAd
                 }
 
+                // Destroy previous ad if exists
                 nativeAd?.destroy()
                 nativeAd = ad
 
+                // Inflate and populate ad view
                 val adView = LayoutInflater.from(this)
-                    .inflate(R.layout.sm_native_v3, adContainer3, false) as NativeAdView
-
+                    .inflate(R.layout.sm_native_v6, adContainer6, false) as NativeAdView
                 populateNativeAdView(ad, adView)
-                adContainer3.removeAllViews()
-                adContainer3.addView(adView)
 
-                isAdLoading = false
-                loadAdButton.isEnabled = true
-                // Stop and hide shimmer effect
-                shimmerLayout.stopShimmer()
-                shimmerLayout.isGone = true
-                Toast.makeText(this, "Ad loaded successfully", Toast.LENGTH_SHORT).show()
-            }.withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    isAdLoading = false
-                    loadAdButton.isEnabled = true
-                    dismissAd()
-                    // Stop and hide shimmer effect on ad failure
-                    shimmerLayout.stopShimmer()
-                    shimmerLayout.isGone = true
-                    Toast.makeText(
-                        this@MainActivity, "Ad failed to load: ${error.message}", Toast.LENGTH_LONG
-                    ).show()
-                }
-            }).withNativeAdOptions(NativeAdOptions.Builder().build()).build()
-
-        adLoader.loadAd(AdRequest.Builder().build())
-    }
-
-
-    private fun loadNativeAd5() {
-        if (isAdLoading) {
-            Toast.makeText(this, "Ad is already loading", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        isAdLoading = true
-        loadAdButton.isEnabled = false
-        // Start shimmer effect
-        shimmerLayout.isVisible = true
-        shimmerLayout.startShimmer()
-        Toast.makeText(this, "Loading ad...", Toast.LENGTH_SHORT).show()
-
-        val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110")
-            .forNativeAd { ad: NativeAd ->
-                if (isDestroyed) {
-                    ad.destroy()
-                    return@forNativeAd
-                }
-
-                nativeAd?.destroy()
-                nativeAd = ad
-
-                val adView = LayoutInflater.from(this)
-                    .inflate(R.layout.sm_native_v6, adContainer3, false) as NativeAdView
-
-                populateNativeAdView(ad, adView)
+                // Clear container and add new ad view
                 adContainer6.removeAllViews()
                 adContainer6.addView(adView)
-
                 isAdLoading = false
                 loadAdButton.isEnabled = true
-                // Stop and hide shimmer effect
-                shimmerLayout.stopShimmer()
-                shimmerLayout.isGone = true
+                hideShimmer()
                 Toast.makeText(this, "Ad loaded successfully", Toast.LENGTH_SHORT).show()
             }.withAdListener(object : AdListener() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     isAdLoading = false
                     loadAdButton.isEnabled = true
                     dismissAd()
-                    // Stop and hide shimmer effect on ad failure
-                    shimmerLayout.stopShimmer()
-                    shimmerLayout.isGone = true
                     Toast.makeText(
                         this@MainActivity, "Ad failed to load: ${error.message}", Toast.LENGTH_LONG
                     ).show()
@@ -220,16 +217,12 @@ class MainActivity : ComponentActivity() {
 
         adLoader.loadAd(AdRequest.Builder().build())
     }
-
 
     private fun dismissAd() {
         nativeAd?.destroy()
         nativeAd = null
-        adContainer3.removeAllViews()
         adContainer6.removeAllViews()
-        // Stop and hide shimmer effect when dismissing ad
-        shimmerLayout.stopShimmer()
-        shimmerLayout.isGone = true
+        updateShimmerVisibility()
     }
 
     private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
@@ -274,10 +267,29 @@ class MainActivity : ComponentActivity() {
         adView.setNativeAd(nativeAd)
     }
 
+    override fun onResume() {
+        super.onResume()
+        isActivityPaused = false
+        if (nativeAd != null) {
+            hideShimmer()
+        } else {
+            updateShimmerVisibility()
+        }
+        startAdRefresh()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isActivityPaused = true
+        shimmerLayout.stopShimmer()
+        stopAdRefresh()
+    }
+
     override fun onDestroy() {
         nativeAd?.destroy()
         connectivityManager.unregisterNetworkCallback(networkCallback)
         shimmerLayout.stopShimmer()
+        stopAdRefresh()
         super.onDestroy()
     }
 }

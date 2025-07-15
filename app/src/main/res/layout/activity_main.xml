@@ -1,77 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp">
 
-    <!-- Load Ad Button -->
+    <!-- Button to load the ad -->
     <Button
         android:id="@+id/load_ad_button"
         android:layout_width="wrap_content"
-        android:layout_marginTop="20dp"
         android:layout_height="wrap_content"
-        android:text="Load Ad"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:layout_centerHorizontal="true"
+        android:text="@string/load_ad" />
 
-    <!-- Shimmer Layout for Ad Loading -->
-    <com.facebook.shimmer.ShimmerFrameLayout
+    <!-- FrameLayout for the ad -->
+    <FrameLayout
+        android:id="@+id/ad_container_6"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/load_ad_button"
+        android:layout_marginTop="16dp" />
+
+    <!-- Include Shimmer Layout -->
+    <include
         android:id="@+id/shimmer_layout"
+        layout="@layout/shimmer_template_6"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:shimmer_duration="1000"
-        app:shimmer_auto_start="false"
-        app:layout_constraintTop_toBottomOf="@id/load_ad_button"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_below="@id/load_ad_button"
+        android:layout_marginTop="16dp" />
 
-        <!-- Placeholder content with loading text -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:background="#F0F0F0">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Ad is loading"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:layout_marginBottom="8dp" />
-
-            <!-- Placeholder for ad content -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="100dp"
-                android:background="#E0E0E0" />
-
-        </LinearLayout>
-    </com.facebook.shimmer.ShimmerFrameLayout>
-
-    <!-- Ad Container -->
-    <FrameLayout
-        android:id="@+id/sm_native_3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/load_ad_button"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <FrameLayout
-        android:id="@+id/sm_native_6"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="30dp"
-        android:layout_marginTop="10dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"/>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>
